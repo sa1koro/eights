@@ -20,14 +20,19 @@
             <span id="result" class="result_screen"></span>
         </span>
 
-        <iframe id="main_applet" class="main_screen"></iframe>
+        <iframe id="lead_applet" class="lead_screen"></iframe>
 
         <span id="footer">
+            ↑ Leads | Hands ↓
+            <br />
             <span id="menu" class="menu_screen">
                 <a id="menu_draw1">Draw +1</a> |
                 <a id="menu_draw2">Draw +2</a>
             </span>
         </span>
+
+
+        <iframe id="main_applet" class="hand_screen"></iframe>
     </div>
 
     <script type="text/javascript" src="engine.js"></script>
@@ -44,8 +49,17 @@
             "2": document.getElementById("menu_draw2")
         };
 
-        // Update applet.
-        function UpdateApplet(seed = null, face = null, flag = null) {
+        // Update lead applet.
+        function UpdateLeadApplet(face = null) {
+
+            // Load dice applet.
+            let args = ("&type=" + 1 + "d" + type_number) +
+                (face != null ? "&face=" + face : "");
+            lead_applet.src = "app.html?" + args.slice(1);
+        }
+
+        // Update hand applet.
+        function UpdateHandApplet(seed = null, face = null, flag = null) {
 
             // Load dice applet.
             let args = ("&type=" + type_count + "d" + type_number) +
@@ -138,16 +152,20 @@
                 // Received flag.
                 } else if (flag.length > 0) {
                     let faces_next = [];
+                    let faces_lead = [];
                     for (let i = 0; i < faces.length; ++i) {
                         if (!flag[i]) {
                             faces_next.push(faces[i]);
+                        } else {
+                            faces_lead.push(faces[i]);
                         }
                     }
                     if (faces_next.length != faces.length) {
                         faces = faces_next;
                         type_count = faces.length;
                         let flag_next = [];
-                        UpdateApplet(null, faces.join(','), flag_next);
+                        UpdateHandApplet(null, faces.join(','), flag_next);
+                        UpdateLeadApplet(faces_lead.join(','));
                     }
                 }
             }
@@ -155,7 +173,7 @@
         }, false);
 
         let flag_next = [];
-        UpdateApplet(0, null, flag_next);
+        UpdateHandApplet(0, null, flag_next);
 
         // On click menu.
         Object.keys(menu).forEach((key) => {
@@ -164,10 +182,10 @@
                     let face = faces.join(',') + "," + Array.from({length: key}, () => 0).join(',');
                     type_count = faces.length + parseInt(key);
                     let flag_next = [];
-                    UpdateApplet(null, face, flag_next);
+                    UpdateHandApplet(null, face, flag_next);
                 } else {
                     let flag_next = [];
-                    UpdateApplet(null, null, flag_next);
+                    UpdateHandApplet(null, null, flag_next);
                 }
             }
         });
