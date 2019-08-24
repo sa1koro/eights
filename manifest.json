@@ -1,0 +1,12 @@
+{
+    "name": "Crazy Eights by Saikoro.org",
+    "short_name": "Crazy Eights",
+    "background_color": "#888",
+    "theme_color": "#888",
+    "icons": [{
+        "src": "./d1ce/info/icon256.png",
+        "sizes": "256x256"
+    }],
+    "start_url": "./?app=1",
+    "display": "standalone"
+}

@@ -1,0 +1,338 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Crazy Eights</title>
+    <link rel="icon" type="image/png" href="info/P0-icon256a.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="info/P0-icon256.png" sizes="256x256">
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <div id="container">
+        <span id="header">
+            <span id="result" class="result_screen"></span>
+        </span>
+
+        <iframe id="main_applet" class="main_screen"></iframe>
+    </div>
+
+    <script type="text/javascript" src="engine.js"></script>
+    <!-- Development -  - /Development -->
+
+    <script type="text/javascript">
+        let result_screen = new d1ce.Screen("result_screen");
+        let menu_screen = new d1ce.Screen("menu_screen")
+        let applet = document.getElementById("main_applet")
+        let menu = {
+        };
+
+        // Update applet.
+        function UpdateApplet(type, seed = null, face = null, flag = null) {
+
+            // Load dice applet.
+            let args = (type != null ? "&type=" + type : "") +
+                (seed != null ? "&seed=" + seed : "") +
+                (face != null ? "&face=" + face : "") +
+                (flag != null ? "&flag=" + flag : "");
+            applet.src = "app.html?" + args.slice(1);
+
+            console.log("Applet type=" + type +
+                        " face=" + face +
+                        " flag=" + flag);
+
+
+            // Change menu color.
+            Object.keys(menu).forEach((key) => {
+                if (key == type) {
+                    menu[key].style.color = "#000";
+                } else {
+                    menu[key].style.color = "#666";
+                }
+            });
+
+            // Clear result screen.
+            result_screen.Clear();
+            result_screen.Print("?");
+        }
+
+        // Update result screen.
+        function UpdateResult(result) {
+            result_screen.Clear();
+            result_screen.Print(result);
+        }
+
+        // Update menu screen.
+        function UpdateMenu(menu) {
+            menu_screen.Clear();
+            menu_screen.Print(menu);
+        }
+
+        // Parse type parameter.
+        function ParseTypeParams(type) {
+            let type_count = 1;
+            let type_number = 6;
+            if (type && type.match(/(\d*)d(\d*)/)) {
+                type.replace(/(\d*)d(\d*)/, (match, p1, p2) => {
+                    (match);
+                    type_count = p1 > 0 ? Number(p1) : 1;
+                    type_number = p2 > 0 ? Number(p2) : 6;
+                });
+            }
+            return [type_count, type_number];
+        }
+
+        // Parse face parameter.
+        function ParseFaceParams(face) {
+            return face && face.split(",").map((n) => isFinite(n) ? Number(n) : 0) || [];
+        }
+
+        // Parse flag parameter.
+        function ParseFlagParams(flag) {
+            return flag && flag.split(",").map((n) => isFinite(n) ? Number(n) : 0) || [];
+        }
+
+        // Result of Blackjack.
+        function BlackjackResult(face_numbers) {
+            let card_numbers = face_numbers.map((n) => n <= 52 ? (n - 1) % 13 + 1 : 0);
+            let result = 0;
+            let joker = 0;
+            let ace = 0;
+            for (let i = 0; i < face_numbers.length; ++i) {
+                if (card_numbers[i] == 0) {
+                    joker += 1;
+                } else if (card_numbers[i] == 1) {
+                    ace += 1;
+                } else if (card_numbers[i] >= 10) {
+                    result += 10;
+                } else {
+                    result += card_numbers[i];
+                }
+            }
+            for (; ace > 0; ace -= 1) {
+                if (result + joker + ace <= 11) {
+                    result += 11;
+                } else {
+                    result += 1;
+                }
+            }
+            for (; joker > 0; joker -= 1) {
+                if (result + joker <= 11) {
+                    result += 11;
+                } else if (result + joker >= 12 && result + joker <= 21) {
+                    result += 22 - (result + joker);
+                } else {
+                    result += 1;
+                }
+            }
+            return result > 21 ? "Bust" : result == 21 ? "Blackjack" : result;
+        }
+
+        // Result of Poker.
+        function PokerResult(face_numbers) {
+            let card_numbers = face_numbers.map((n) => n <= 52 ? (n - 1) % 13 + 1 : 0).map((n) => n == 1 ? 14 : n).sort((a, b) => a - b);
+            let card_suits = face_numbers.map((n) => n <= 52 ? Math.floor((n - 1) / 13) + 1 : 0).sort((a, b) => a - b);
+            let joker = 0;
+            let flush = 1;
+            let straight = 0;
+            let pairs = 0;
+            let pairs_numbers = [];
+            let highcard = card_numbers[4];
+
+            // Count joker.
+            for (let i = 0; i < face_numbers.length; ++i) {
+                if (card_numbers[i] == 0) {
+                    joker += 1;
+                }
+            }
+
+            // Check hands are flush.
+            for (let i = 1; i < face_numbers.length; ++i) {
+                if (card_suits[i] > 0 && card_suits[i - 1] > 0) {
+                    if (card_suits[i] != card_suits[i - 1]) {
+                        flush = 0;
+                    }
+                }
+            }
+
+            // Count pairs and check hands are straight.
+            let straight_highcard = highcard;
+            for (let i = 1; i < face_numbers.length; ++i) {
+                if (card_numbers[i] > 0 && card_numbers[i - 1] > 0) {
+                    if (card_numbers[i] != card_numbers[i - 1]) {
+                        if (card_numbers[i] == 14) {
+
+                            // Check 10 to A straight.
+                            if (card_numbers[i - 1] >= 6) {
+                                straight += card_numbers[i] - card_numbers[i - 1] - 1;
+
+                            // Check A to 5 straight.
+                            } else {
+                                straight += card_numbers[0] - 2;
+                                straight_highcard = 5;
+                            }
+                        } else {
+                            straight += card_numbers[i] - card_numbers[i - 1] - 1;
+                        }
+                    } else {
+                        pairs += 1;
+                        pairs_numbers.push(card_numbers[i]);
+                    }
+                }
+            }
+
+            // Result.
+            if (pairs + joker >= 4) {
+                return "Five of a kind";
+            } else if (flush) {
+                if (pairs == 0 && straight <= joker) {
+                    if (straight_highcard == 14) {
+                        return "Royal flush";
+                    } else {
+                        return "Straight flush";
+                    }
+                } else {
+                    return "Flush";
+                }
+            } else if (pairs == 0 && straight <= joker) {
+                return "Straight";
+            } else if (pairs + joker >= 1) {
+
+                // Count same cards and update highcard of pairs.
+                let pairs_highcard = 0;
+                let samecards = pairs >= 1 ? 2 : 1;
+                for (let i = 0; i < pairs_numbers.length; ++i) {
+                    if (pairs_numbers[i] > 0) {
+                        if (pairs_highcard == pairs_numbers[i]) {
+                            samecards += 1;
+                        } else if (pairs_highcard < pairs_numbers[i]) {
+                            pairs_highcard = pairs_numbers[i];
+                        }
+                    }
+                }
+
+                if (samecards + joker >= 4) {
+                    return "Four of a kind";
+                } else if (samecards + joker >= 3 && pairs + joker >= 3) {
+                    return "Full house";
+                } else if (samecards + joker >= 3) {
+                    return "Three of a kind";
+                } else if (pairs + joker >= 2) {
+                    return "Two pair";
+                } else {
+                    return "One pair";
+                }
+            }
+            return highcard == 14 ? "Ace" :
+                   highcard == 13 ? "King" :
+                   highcard == 12 ? "Queen" :
+                   highcard == 11 ? "Jack" : "" + highcard;
+        }
+
+        // Parse query parameters.
+        let path = location.href;
+        if (path && path.match(/[\/\?]([0-9A-Z\+]+)$/)) {
+            path.replace(/[\/\?]([0-9A-Z\+]+)$/, (match, p1) => {
+                (match);
+                let args = p1.split("+");
+                if (args[0] == 0) {
+                    UpdateApplet("2d54", 0, null, null);
+                } else {
+                    UpdateApplet(null, null, args[0], null);
+                }
+            });
+        } else {
+            let query = new d1ce.Params();
+            let type = query.Value("type") || "5d54";
+            let seed = query.Value("seed");
+            let face = query.Value("face");
+            let flag = query.Value("flag");
+            UpdateApplet(type, seed, face, flag);
+        }
+
+        // Receiving message params.
+        // window.onload = async () => {
+        console.log("Wait for receivng message.");
+
+        // On received message from main applet.
+        window.addEventListener("message", (evt) => {
+            if (evt.source == applet.contentWindow) {
+                let message = new d1ce.Params("*", true);
+            // while (true) {
+            //     await message.WaitUpdatingValue();
+
+                // Parse type parameter.
+                let type = ParseTypeParams(message.Value("type"));
+
+                // Parse face parameter.
+                let face = ParseFaceParams(message.Value("face"));
+
+                // Parse select parameter.
+                let flag = ParseFlagParams(message.Value("flag"));
+
+                console.log("Received " + message.Value("state") +
+                            " type=" + message.Value("type") +
+                            " face=" + message.Value("face") +
+                            " flag=" + message.Value("flag"));
+
+                // Now rolling or undefined dice.
+                if (face.length == 0) {
+                    UpdateResult("?");
+
+                // Received flag.
+                } else if (flag.length > 0) {
+                    let face_next = [];
+                    for (let i = 0; i < face.length; ++i) {
+                        if (!flag[i]) {
+                            face_next.push(face[i]);
+                        }
+                    }
+                    if (face_next.length != face.length) {
+                        face = face_next;
+                        if (face.length > 5) {
+                            let flag_next = [];
+                            UpdateApplet("" + face.length + "d" + type[1], null, face, flag_next);
+                        } else {
+                            UpdateApplet("" + face.length + "d" + type[1], null, face, null);
+                        }
+                    }
+                }
+
+                // Too many hands and discard.
+                if (face.length > 5) {
+
+                    // Too many hands and discard.
+                    if (flag.length == 0) {
+                        let flag_next = [];
+                        UpdateApplet("" + face.length + "d" + type[1], null, face, flag_next);
+                    }
+
+                    UpdateResult("Tap to discard!");
+
+                // Too few hands.
+                } else if (face.length < 5) {
+                    UpdateResult("?");
+
+                // Result of hands.
+                } else {
+                    UpdateResult(PokerResult(face));
+                }
+            }
+        // }
+        }, false);
+
+        // On click menu.
+        Object.keys(menu).forEach((key) => {
+            menu[key].onclick = () => UpdateApplet(key);
+        });
+    </script>
+
+    <script>navigator.serviceWorker.register("worker.js");</script>
+</body>
+</html>
