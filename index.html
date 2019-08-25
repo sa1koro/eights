@@ -22,17 +22,23 @@
 
         <iframe id="lead_applet" class="lead_screen"></iframe>
 
-        <span id="footer">
-            ↑ Leads | Hands ↓
-            <br />
-            <span id="menu" class="menu_screen">
-                <a id="menu_draw1">Draw +1</a> |
-                <a id="menu_draw2">Draw +2</a>
-            </span>
+        <span id="control">
+            <div id="menu_upper" class="menu_screen">
+                <a id="menu_hand">Hands ↓</a>
+            </div>
+            <hr />
+            <div id="menu_lower" class="menu_screen">
+                <a id="menu_lead">↑ Leads</a> |
+                <a id="menu_draw1">Draw+1</a> |
+                <a id="menu_draw2">Draw+2</a>
+            </div>
         </span>
 
+        <iframe id="hand_applet" class="hand_screen"></iframe>
 
-        <iframe id="main_applet" class="hand_screen"></iframe>
+        <span id="footer">
+            &copy;2019 Saikoro.org
+        </span>
     </div>
 
     <script type="text/javascript" src="engine.js"></script>
@@ -41,32 +47,44 @@
     <script type="text/javascript">
         let result_screen = new d1ce.Screen("result_screen");
         let menu_screen = new d1ce.Screen("menu_screen")
-        let applet = document.getElementById("main_applet")
+        let lead_applet = document.getElementById("lead_applet")
+        let hand_applet = document.getElementById("hand_applet")
         let type_count = 5
         let type_number = 54
         let menu = {
+            "lead": document.getElementById("menu_lead"),
+            "hand": document.getElementById("menu_hand"),
             "1": document.getElementById("menu_draw1"),
             "2": document.getElementById("menu_draw2")
         };
 
         // Update lead applet.
-        function UpdateLeadApplet(face = null) {
+        function UpdateLeadApplet(type, face = null, flag = null) {
 
             // Load dice applet.
-            let args = ("&type=" + 1 + "d" + type_number) +
-                (face != null ? "&face=" + face : "");
-            lead_applet.src = "app.html?" + args.slice(1);
+            if (type != null) {
+                let args = ("&type=" + type) +
+                    (face != null ? "&face=" + face : "") +
+                    (flag != null ? "&flag=" + flag : "");
+                lead_applet.src = "app.html?" + args.slice(1);
+            } else {
+                lead_applet.src = "";
+            }
         }
 
         // Update hand applet.
-        function UpdateHandApplet(seed = null, face = null, flag = null) {
+        function UpdateHandApplet(type, seed = null, face = null, flag = null) {
 
             // Load dice applet.
-            let args = ("&type=" + type_count + "d" + type_number) +
-                (seed != null ? "&seed=" + seed : "") +
-                (face != null ? "&face=" + face : "") +
-                (flag != null ? "&flag=" + flag : "");
-            applet.src = "app.html?" + args.slice(1);
+            if (type != null) {
+                let args = ("&type=" + type) +
+                    (seed != null ? "&seed=" + seed : "") +
+                    (face != null ? "&face=" + face : "") +
+                    (flag != null ? "&flag=" + flag : "");
+                hand_applet.src = "app.html?" + args.slice(1);
+            } else {
+                hand_applet.src = "";
+            }
 
             console.log("Applet " +
                         " face=" + face +
@@ -129,7 +147,38 @@
 
         // On received message from main applet.
         window.addEventListener("message", (evt) => {
-            if (evt.source == applet.contentWindow) {
+
+            // Select lead card.
+            if (evt.source == lead_applet.contentWindow) {
+                let message = new d1ce.Params("*", true);
+            // while (true) {
+            //     await message.WaitUpdatingValue();
+
+                // Parse face parameter.
+                lead_faces = ParseFaceParams(message.Value("face"));
+
+                // Parse select parameter.
+                lead_flag = ParseFlagParams(message.Value("flag"));
+
+                console.log("Received Lead" + message.Value("state") +
+                            " face=" + message.Value("face") +
+                            " flag=" + message.Value("flag"));
+
+                // Now rolling or undefined dice.
+                if (lead_faces.length == 0) {
+
+                // Received flag.
+                } else if (lead_flag.length > 0) {
+
+                    // Discard all cards when select.
+                    UpdateLeadApplet(null);
+
+                    // Scroll to hand cards.
+                    window.scrollTo({top: window.innerHeight, behavior: "smooth"});
+                }
+
+            // Select hand card.
+            } else if (evt.source == hand_applet.contentWindow) {
                 let message = new d1ce.Params("*", true);
             // while (true) {
             //     await message.WaitUpdatingValue();
@@ -147,7 +196,6 @@
 
                 // Now rolling or undefined dice.
                 if (faces.length == 0) {
-                    UpdateResult("?");
 
                 // Received flag.
                 } else if (flag.length > 0) {
@@ -160,32 +208,53 @@
                             faces_lead.push(faces[i]);
                         }
                     }
+
+                    // Play card when select card.
                     if (faces_next.length != faces.length) {
                         faces = faces_next;
                         type_count = faces.length;
                         let flag_next = [];
-                        UpdateHandApplet(null, faces.join(','), flag_next);
-                        UpdateLeadApplet(faces_lead.join(','));
+                        UpdateHandApplet("" + type_count + "d" + type_number, null, faces.join(','), flag_next);
+                        UpdateLeadApplet("1d" + type_number , faces_lead.join(','), flag_next);
+
+                        // Scroll to top.
+                        window.scrollTo({top: 0, behavior: "smooth"});
                     }
                 }
             }
         // }
         }, false);
 
+        // Initial hand.
         let flag_next = [];
-        UpdateHandApplet(0, null, flag_next);
+        UpdateHandApplet("" + type_count + "d" + type_number, 0, null, flag_next);
+
+        // Scroll to hand cards.
+        window.scrollTo({top: window.innerHeight, behavior: "smooth"});
 
         // On click menu.
         Object.keys(menu).forEach((key) => {
             menu[key].onclick = () => {
-                if (key > 0) {
+
+                // Scroll to lead cards.
+                if (key == "lead") {
+                    window.scrollTo({top: 0, behavior: "smooth"});
+
+                // Scroll to hand cards.
+                } else if (key == "hand") {
+                    window.scrollTo({top: window.innerHeight, behavior: "smooth"});
+
+                // Draw 1 or 2.
+                } else if (key > 0) {
+
+                    // Draw 1 or 2 cards.
                     let face = faces.join(',') + "," + Array.from({length: key}, () => 0).join(',');
                     type_count = faces.length + parseInt(key);
                     let flag_next = [];
-                    UpdateHandApplet(null, face, flag_next);
-                } else {
-                    let flag_next = [];
-                    UpdateHandApplet(null, null, flag_next);
+                    UpdateHandApplet("" + type_count + "d" + type_number, null, face, flag_next);
+
+                    // Scroll to hand cards.
+                    window.scrollTo({top: window.innerHeight, behavior: "smooth"});
                 }
             }
         });
