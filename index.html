@@ -174,7 +174,7 @@
                     UpdateLeadApplet(null);
 
                     // Scroll to hand cards.
-                    window.scrollTo({top: window.innerHeight, behavior: "smooth"});
+                    window.scrollTo(0, window.innerHeight);
                 }
 
             // Select hand card.
@@ -218,7 +218,7 @@
                         UpdateLeadApplet("1d" + type_number , faces_lead.join(','), flag_next);
 
                         // Scroll to top.
-                        window.scrollTo({top: 0, behavior: "smooth"});
+                        window.scrollTo(0, 0);
                     }
                 }
             }
@@ -230,7 +230,7 @@
         UpdateHandApplet("" + type_count + "d" + type_number, 0, null, flag_next);
 
         // Scroll to hand cards.
-        window.scrollTo({top: window.innerHeight, behavior: "smooth"});
+        window.scrollTo(0, window.innerHeight);
 
         // On click menu.
         Object.keys(menu).forEach((key) => {
@@ -238,11 +238,11 @@
 
                 // Scroll to lead cards.
                 if (key == "lead") {
-                    window.scrollTo({top: 0, behavior: "smooth"});
+                    window.scrollTo(0, 0);
 
                 // Scroll to hand cards.
                 } else if (key == "hand") {
-                    window.scrollTo({top: window.innerHeight, behavior: "smooth"});
+                    window.scrollTo(0, window.innerHeight);
 
                 // Draw 1 or 2.
                 } else if (key > 0) {
@@ -254,7 +254,7 @@
                     UpdateHandApplet("" + type_count + "d" + type_number, null, face, flag_next);
 
                     // Scroll to hand cards.
-                    window.scrollTo({top: window.innerHeight, behavior: "smooth"});
+                    window.scrollTo(0, window.innerHeight);
                 }
             }
         });
